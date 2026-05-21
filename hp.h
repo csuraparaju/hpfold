@@ -27,3 +27,8 @@ int mc_traj_energy(const mc_trajectory* traj);
  * Both arrays must be at least n elements, where n is the sequence length.
  */
 void mc_traj_get_coords(const mc_trajectory* traj, int* xs, int* ys, int n);
+
+/**
+ * Pretty print the data structure
+ */
+void mc_traj_print(const mc_trajectory* traj);
