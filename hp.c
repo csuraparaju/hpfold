@@ -176,3 +176,7 @@ int mc_traj_run(mc_trajectory* traj, int steps, double temp) {
 }
 
 // End Interface Implementation
+
+int main() {
+    return 0;
+}
