@@ -1,6 +1,11 @@
 #pragma once
 #include <stdbool.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+
 #define HP_MAX_N   64
 #define HP_LATTICE (2 * HP_MAX_N)
 
@@ -85,3 +90,7 @@ void hp_chain_print(const hp_chain* c);
  * Deep copy of the chain.
  */
 hp_chain* hp_chain_clone(const hp_chain* c);
+
+#ifdef __cplusplus
+}
+#endif
