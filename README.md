@@ -8,7 +8,7 @@ The [HP model](https://en.wikipedia.org/wiki/Hydrophobic-polar_protein_folding_m
 
 This project provides:
 
-- A `hp_chain` representation that tracks the 2D lattice structure with incremental energy updates
+- A `hp_chain` representation that tracks residue coordinates on the 2D lattice with incremental energy updates (occupancy by coordinate scan, no occupancy grid)
 - Three local move types (end flip, corner flip, crankshaft)
 - A Metropolis–Hastings sampler over conformations at a fixed temperature
 - Optional **CUDA parallel tempering** (`mc_hp_pt`): one GPU thread per replica, temperature swaps on the host
@@ -33,7 +33,7 @@ Rejected moves are undone by committing the reverse displacement.
     ├── main.c              # Demo: MH run on a fixed HP sequence
     ├── makefile            # Build mc_hp (release) and mc_hp_dbg (debug)
     ├── include/
-    │   ├── hp.h            # HP chain API (lattice, energy, moves)
+    │   ├── hp.h            # HP chain API (coords, energy, moves)
     │   ├── mh.h            # Metropolis–Hastings sampler API
     │   ├── rng.h           # xorshift64 RNG
     │   ├── contracts.h     # REQUIRES/ENSURES/ASSERT (15-122 style)

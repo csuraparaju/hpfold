@@ -65,8 +65,8 @@ int hp_chain_contacts_at(const hp_chain* c, int aa_idx, int cx, int cy);
 
 /**
  * Move amino acid aa_idx from (old_x, old_y) to (new_x, new_y), updating
- * the occupancy grid, coordinates, and energy. The caller must have verified
- * that the destination is in-bounds and empty.
+ * coordinates and energy. The caller must have verified that the destination
+ * is in-bounds and empty.
  */
 void hp_chain_commit_move(hp_chain* c, int aa_idx, int old_x, int old_y, int new_x, int new_y);
 

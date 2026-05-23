@@ -8,19 +8,23 @@
 #include "include/pt.h"
 #include "include/rng.h"
 
-#define PT_LATTICE_IDX(x, y) ((x) * HP_LATTICE + (y))
-
 /*
- * Full lattice chain state on device. Duplicated from src/hp.c
+ * Chain state on device. Duplicated from src/hp.c
  */
 struct hp_chain {
     int x[HP_MAX_N];
     int y[HP_MAX_N];
     int n;
     char aa_seq[HP_MAX_N];
-    int lattice_occ[HP_LATTICE * HP_LATTICE];
     int energy;
 };
+
+__device__ int d_residue_at(const hp_chain* chain, int x, int y) {
+    for (int i = 0; i < chain->n; i++) {
+        if (chain->x[i] == x && chain->y[i] == y) return i;
+    }
+    return -1;
+}
 
 #define CUDA_CHECK(call)                                                       \
     do {                                                                       \
@@ -65,7 +69,7 @@ __device__ int d_hp_chain_contacts_at(const hp_chain* chain, int aa_idx, int cx,
         int nx = cx + dx[d];
         int ny = cy + dy[d];
         if (nx < 0 || nx >= HP_LATTICE || ny < 0 || ny >= HP_LATTICE) continue;
-        int j = chain->lattice_occ[PT_LATTICE_IDX(nx, ny)];
+        int j = d_residue_at(chain, nx, ny);
         if (j == -1) continue;
         if (j == aa_idx) continue;
         if (j == aa_idx - 1 || j == aa_idx + 1) continue;
@@ -87,11 +91,11 @@ __device__ void d_hp_chain_get_coord(const hp_chain* chain, int i, int* x, int* 
  * Return which amino acid occupies (x, y), or -1 if the site is empty.
  */
 __device__ int d_hp_chain_site_occ(const hp_chain* chain, int x, int y) {
-    return chain->lattice_occ[PT_LATTICE_IDX(x, y)];
+    return d_residue_at(chain, x, y);
 }
 
 /*
- * Move one amino acid on the lattice and update occupancy, coordinates, and energy.
+ * Move one amino acid on the lattice and update coordinates and energy.
  */
 __device__ void d_hp_chain_commit_move(hp_chain* chain, int aa_idx,
                                        int old_x, int old_y, int new_x, int new_y) {
@@ -99,8 +103,6 @@ __device__ void d_hp_chain_commit_move(hp_chain* chain, int aa_idx,
     int new_contacts = d_hp_chain_contacts_at(chain, aa_idx, new_x, new_y);
     int dE = -(new_contacts - old_contacts);
 
-    chain->lattice_occ[PT_LATTICE_IDX(old_x, old_y)] = -1;
-    chain->lattice_occ[PT_LATTICE_IDX(new_x, new_y)] = aa_idx;
     chain->x[aa_idx] = new_x;
     chain->y[aa_idx] = new_y;
     chain->energy += dE;
@@ -114,11 +116,6 @@ __device__ void d_hp_chain_commit_two_site_move(hp_chain* chain,
     int aa_idx2, int old_x2, int old_y2, int new_x2, int new_y2) {
     int old_contacts = d_hp_chain_contacts_at(chain, aa_idx1, old_x1, old_y1) +
                        d_hp_chain_contacts_at(chain, aa_idx2, old_x2, old_y2);
-
-    chain->lattice_occ[PT_LATTICE_IDX(old_x1, old_y1)] = -1;
-    chain->lattice_occ[PT_LATTICE_IDX(old_x2, old_y2)] = -1;
-    chain->lattice_occ[PT_LATTICE_IDX(new_x1, new_y1)] = aa_idx1;
-    chain->lattice_occ[PT_LATTICE_IDX(new_x2, new_y2)] = aa_idx2;
 
     chain->x[aa_idx1] = new_x1;
     chain->y[aa_idx1] = new_y1;

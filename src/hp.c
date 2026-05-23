@@ -7,17 +7,22 @@
 #include "include/contracts.h"
 #include "include/hp.h"
 
-#define ORIGIN      (HP_LATTICE / 2)
-#define LATTICE_IDX(x, y) ((x) * HP_LATTICE + (y))
+#define ORIGIN (HP_LATTICE / 2)
 
 struct hp_chain {
     int x[HP_MAX_N];
     int y[HP_MAX_N];
     int n;
     char aa_seq[HP_MAX_N];
-    int lattice_occ[HP_LATTICE * HP_LATTICE];
     int energy;
 };
+
+static int residue_at(const hp_chain* chain, int x, int y) {
+    for (int i = 0; i < chain->n; i++) {
+        if (chain->x[i] == x && chain->y[i] == y) return i;
+    }
+    return -1;
+}
 
 int hp_chain_contacts_at(const hp_chain* chain, int aa_idx, int cx, int cy) {
     REQUIRES(chain != NULL);
@@ -34,7 +39,7 @@ int hp_chain_contacts_at(const hp_chain* chain, int aa_idx, int cx, int cy) {
         int nx = cx + dx[d];
         int ny = cy + dy[d];
         if (nx < 0 || nx >= HP_LATTICE || ny < 0 || ny >= HP_LATTICE) continue;
-        int j = chain->lattice_occ[LATTICE_IDX(nx, ny)];
+        int j = residue_at(chain, nx, ny);
 
         if (j == -1) continue;
         if (j == aa_idx) continue;
@@ -61,22 +66,14 @@ bool is_hp_chain(const hp_chain* chain) {
     if (chain == NULL) return false;
     if (chain->n <= 0 || chain->n > HP_MAX_N) return false;
 
-    int num_occupied = 0;
-    for (int idx = 0; idx < HP_LATTICE * HP_LATTICE; idx++) {
-        int b = chain->lattice_occ[idx];
-        if (b == -1) continue;
-        if (b < 0 || b >= chain->n) return false;
-        num_occupied++;
-    }
-    if (num_occupied != chain->n) return false;
-
     for (int i = 0; i < chain->n; i++) {
         if (chain->x[i] < 0 || chain->x[i] >= HP_LATTICE) return false;
         if (chain->y[i] < 0 || chain->y[i] >= HP_LATTICE) return false;
         if (chain->aa_seq[i] != 'H' && chain->aa_seq[i] != 'P') return false;
 
-        int site = LATTICE_IDX(chain->x[i], chain->y[i]);
-        if (chain->lattice_occ[site] != i) return false;
+        for (int j = i + 1; j < chain->n; j++) {
+            if (chain->x[i] == chain->x[j] && chain->y[i] == chain->y[j]) return false;
+        }
     }
 
     for (int i = 0; i < chain->n - 1; i++) {
@@ -99,13 +96,10 @@ hp_chain* hp_chain_create(const char* aa_seq) {
 
     chain->n = n;
 
-    for (int i = 0; i < HP_LATTICE * HP_LATTICE; i++) chain->lattice_occ[i] = -1;
-
     for (int i = 0; i < n; i++) {
         chain->aa_seq[i] = aa_seq[i];
         chain->x[i] = ORIGIN;
         chain->y[i] = ORIGIN + i;
-        chain->lattice_occ[LATTICE_IDX(ORIGIN, ORIGIN + i)] = i;
     }
 
     chain->energy = compute_energy(chain);
@@ -157,7 +151,7 @@ void hp_chain_get_coord(const hp_chain* chain, int i, int* x, int* y) {
 int hp_chain_site_occ(const hp_chain* chain, int x, int y) {
     REQUIRES(is_hp_chain(chain));
     REQUIRES(x >= 0 && x < HP_LATTICE && y >= 0 && y < HP_LATTICE);
-    return chain->lattice_occ[LATTICE_IDX(x, y)];
+    return residue_at(chain, x, y);
 }
 
 void hp_chain_commit_move(hp_chain* chain,
@@ -174,8 +168,6 @@ void hp_chain_commit_move(hp_chain* chain,
     int new_contacts = hp_chain_contacts_at(chain, aa_idx, new_x, new_y);
     int dE = -(new_contacts - old_contacts);
 
-    chain->lattice_occ[LATTICE_IDX(old_x, old_y)] = -1;
-    chain->lattice_occ[LATTICE_IDX(new_x, new_y)] = aa_idx;
     chain->x[aa_idx] = new_x;
     chain->y[aa_idx] = new_y;
     chain->energy += dE;
@@ -193,22 +185,14 @@ void hp_chain_commit_two_site_move(hp_chain* chain,
     REQUIRES(new_x1 >= 0 && new_x1 < HP_LATTICE && new_y1 >= 0 && new_y1 < HP_LATTICE);
     REQUIRES(new_x2 >= 0 && new_x2 < HP_LATTICE && new_y2 >= 0 && new_y2 < HP_LATTICE);
 
-    // Compute old contacts before clearing any sites
     int old_contacts = hp_chain_contacts_at(chain, aa_idx1, old_x1, old_y1) +
                        hp_chain_contacts_at(chain, aa_idx2, old_x2, old_y2);
-
-    // Clear old positions then place at new positions
-    chain->lattice_occ[LATTICE_IDX(old_x1, old_y1)] = -1;
-    chain->lattice_occ[LATTICE_IDX(old_x2, old_y2)] = -1;
-    chain->lattice_occ[LATTICE_IDX(new_x1, new_y1)] = aa_idx1;
-    chain->lattice_occ[LATTICE_IDX(new_x2, new_y2)] = aa_idx2;
 
     chain->x[aa_idx1] = new_x1;
     chain->y[aa_idx1] = new_y1;
     chain->x[aa_idx2] = new_x2;
     chain->y[aa_idx2] = new_y2;
 
-    // Compute new contacts after the move so neighbours reflect the new state
     int new_contacts = hp_chain_contacts_at(chain, aa_idx1, new_x1, new_y1) +
                        hp_chain_contacts_at(chain, aa_idx2, new_x2, new_y2);
 
