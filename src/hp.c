@@ -140,6 +140,18 @@ void hp_chain_get_coords(const hp_chain* chain, int* xs, int* ys, int n) {
     }
 }
 
+void hp_chain_set_coords(hp_chain* chain, const int* xs, const int* ys, int n) {
+    REQUIRES(is_hp_chain(chain));
+    REQUIRES(xs != NULL && ys != NULL);
+    REQUIRES(n == chain->n);
+    for (int i = 0; i < n; i++) {
+        chain->x[i] = xs[i];
+        chain->y[i] = ys[i];
+    }
+    chain->energy = compute_energy(chain);
+    ENSURES(is_hp_chain(chain));
+}
+
 void hp_chain_get_coord(const hp_chain* chain, int i, int* x, int* y) {
     REQUIRES(is_hp_chain(chain));
     REQUIRES(i >= 0 && i < chain->n);

@@ -48,6 +48,12 @@ int hp_chain_energy(const hp_chain* c);
 void hp_chain_get_coords(const hp_chain* c, int* xs, int* ys, int n);
 
 /**
+ * Replace the folded coordinates of c with (xs, ys) and recompute energy.
+ * n must equal hp_chain_length(c). The amino acid sequence is unchanged.
+ */
+void hp_chain_set_coords(hp_chain* c, const int* xs, const int* ys, int n);
+
+/**
  * Get the 2D lattice coordinates of a single amino acid i.
  */
 void hp_chain_get_coord(const hp_chain* c, int i, int* x, int* y);
